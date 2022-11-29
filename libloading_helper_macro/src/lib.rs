@@ -4,32 +4,41 @@ use proc_macro::TokenStream;
 use proc_macro2::Ident;
 use quote::quote;
 use syn::{
-    parse_macro_input, Attribute, ForeignItem, ForeignItemFn, ForeignItemStatic, Item, LitByteStr,
-    Type, Visibility,
+    parse_macro_input, Attribute, ForeignItem, ForeignItemFn, ForeignItemStatic, Item,
+    ItemForeignMod, ItemMod, LitByteStr, Type, Visibility,
 };
 
 #[proc_macro_attribute]
 pub fn library(attr: TokenStream, item: TokenStream) -> TokenStream {
     let attr = parse_macro_input!(attr as syn::AttributeArgs);
 
-    let mut item = parse_macro_input!(item as syn::ItemMod);
+    let item = match parse_macro_input!(item as Item) {
+        Item::Mod(item) => parse_mod(item),
+        Item::ForeignMod(mut block) => {
+            let list = parse_extern_c_block(&mut block);
+            let block = (!block.items.is_empty()).then_some(block);
+            quote! {
+                #block
+                #( #list )*
+            }
+        }
+        item => quote!( #item ),
+    };
 
+    quote! {
+        #( #attr )*
+        #item
+    }
+    .into()
+}
+
+fn parse_mod(mut item: ItemMod) -> proc_macro2::TokenStream {
     if let Some((_, l)) = &mut item.content {
         let mut list = vec![];
 
         l.retain_mut(|item| {
             if let Item::ForeignMod(fm) = item {
-                fm.items.retain(|item| match item {
-                    ForeignItem::Fn(fn_item) => {
-                        list.push(fn_impl(fn_item));
-                        false
-                    }
-                    ForeignItem::Static(static_item) => {
-                        list.push(static_impl(static_item));
-                        false
-                    }
-                    _ => true,
-                });
+                list.append(&mut parse_extern_c_block(fm));
 
                 !fm.items.is_empty()
             } else {
@@ -37,16 +46,28 @@ pub fn library(attr: TokenStream, item: TokenStream) -> TokenStream {
             }
         });
 
-        for mut s in list {
-            l.append(&mut s);
-        }
+        l.append(&mut list);
     }
 
-    quote! {
-        #( #attr )*
-        #item
-    }
-    .into()
+    quote!( #item )
+}
+
+fn parse_extern_c_block(block: &mut ItemForeignMod) -> Vec<Item> {
+    let mut list = vec![];
+
+    block.items.retain(|item| match item {
+        ForeignItem::Fn(fn_item) => {
+            list.append(&mut fn_impl(fn_item));
+            false
+        }
+        ForeignItem::Static(static_item) => {
+            list.append(&mut static_impl(static_item));
+            false
+        }
+        _ => true,
+    });
+
+    list
 }
 
 fn fn_impl(item: &ForeignItemFn) -> Vec<Item> {
