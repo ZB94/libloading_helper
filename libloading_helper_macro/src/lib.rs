@@ -79,6 +79,7 @@ fn gen(ident: &Ident, attrs: &[Attribute], vis: &Visibility, ty: Type) -> Vec<It
 
     let def = quote! {
         #( #doc )*
+        #[allow(non_camel_case_types)]
         #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
         #vis struct #ident;
     };

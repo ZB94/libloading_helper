@@ -1,0 +1,9 @@
+#include <stdint.h>
+
+int32_t add(int32_t a, int32_t b)
+{
+    return a + b;
+}
+
+extern int32_t STATIC_A;
+int32_t STATIC_A = 100;
