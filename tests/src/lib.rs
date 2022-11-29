@@ -65,6 +65,7 @@ fn test_parse_extern_c_block() {
 }
 
 #[test]
+#[ignore = "仅当`test.c`编译为动态库后手动调用"]
 fn test_call() -> Result<(), libloading::Error> {
     #[library]
     mod test_call {
@@ -78,7 +79,7 @@ fn test_call() -> Result<(), libloading::Error> {
     use test_call::{add, STATIC_A};
 
     unsafe {
-        let lib = libloading::Library::new("./libtest_call.so")?;
+        let lib = libloading::Library::new(libloading::library_filename("test_call"))?;
 
         let a = lib.get::<<STATIC_A as LibrarySymbol>::Type>(STATIC_A::SYMBOL)?;
         assert_eq!(100i32, a.read());
