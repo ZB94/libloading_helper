@@ -16,7 +16,6 @@ pub fn library(attr: TokenStream, item: TokenStream) -> TokenStream {
         Item::Mod(item) => parse_mod(item),
         Item::ForeignMod(mut block) => {
             let list = parse_extern_c_block(&mut block);
-            let block = (!block.items.is_empty()).then_some(block);
             quote! {
                 #block
                 #( #list )*
