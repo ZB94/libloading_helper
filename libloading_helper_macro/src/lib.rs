@@ -5,7 +5,7 @@ use proc_macro2::Ident;
 use quote::quote;
 use syn::{
     parse_macro_input, Attribute, ForeignItem, ForeignItemFn, ForeignItemStatic, Item,
-    ItemForeignMod, ItemMod, LitByteStr, Type, Visibility,
+    ItemForeignMod, ItemMod, LitByteStr, Type, Visibility, parse_quote,
 };
 
 #[proc_macro_attribute]
@@ -74,14 +74,14 @@ fn fn_impl(item: &ForeignItemFn) -> Vec<Item> {
     let v = item.sig.variadic.iter();
     let out = &item.sig.output;
 
-    let ty: Type = syn::parse2(quote!(unsafe extern "C" fn(#(#args),* #(, #v)*) #out)).unwrap();
+    let ty = parse_quote!(unsafe extern "C" fn(#(#args),* #(, #v)*) #out);
 
     gen(&item.sig.ident, &item.attrs, &item.vis, ty)
 }
 
 fn static_impl(item: &ForeignItemStatic) -> Vec<Item> {
     let ty = &item.ty;
-    let ty = syn::parse2(quote!(*mut #ty)).unwrap();
+    let ty = parse_quote!(*mut #ty);
 
     gen(&item.ident, &item.attrs, &item.vis, ty)
 }
@@ -97,22 +97,20 @@ fn gen(ident: &Ident, attrs: &[Attribute], vis: &Visibility, ty: Type) -> Vec<It
         ident.span(),
     );
 
-    let def = quote! {
+    let def = parse_quote! {
         #( #doc )*
         #[allow(non_camel_case_types)]
         #[derive(Debug, Copy, Clone, Eq, PartialEq, Hash)]
         #vis struct #ident;
     };
-    let def: Item = syn::parse2(def).unwrap();
 
-    let impl_item = quote! {
+    let impl_item = parse_quote! {
         impl ::libloading_helper::LibrarySymbol for #ident {
             const NAME: &'static str = #name;
             const SYMBOL: &'static [u8] = #symbol;
             type Type = #ty;
         }
     };
-    let impl_item: Item = syn::parse2(impl_item).unwrap();
 
     vec![def, impl_item]
 }
