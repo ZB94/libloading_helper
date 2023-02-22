@@ -27,7 +27,7 @@ macro_rules! assert_gen {
 }
 
 #[test]
-fn test_parse_mod() {
+fn library_parse_mod() {
     #[library]
     mod ffi {
         extern "C" {
@@ -47,7 +47,7 @@ fn test_parse_mod() {
 }
 
 #[test]
-fn test_parse_extern_c_block() {
+fn library_parse_extern_c_block() {
     #[library]
     extern "C" {
         pub fn ffi_void();
@@ -66,7 +66,7 @@ fn test_parse_extern_c_block() {
 
 #[test]
 #[ignore = "仅当`test.c`编译为动态库后手动调用"]
-fn test_call() -> Result<(), libloading_helper::Error> {
+fn library_call() -> Result<(), libloading_helper::Error> {
     #[library]
     mod test_call {
         extern "C" {
