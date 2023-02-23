@@ -151,7 +151,12 @@ impl From<&ForeignItemFn> for ExternCItem {
 
         let ty = parse_quote!(unsafe extern "C" fn(#(#args),* #(, #v)*) #out);
 
-        Self::new(&item.sig.ident, &item.attrs, ty, Some(item.sig.clone()))
+        Self::new(
+            &item.sig.ident,
+            &item.attrs,
+            ty,
+            item.sig.variadic.is_none().then(|| item.sig.clone()),
+        )
     }
 }
 
