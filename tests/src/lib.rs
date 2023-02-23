@@ -1,91 +1,60 @@
 #![cfg(test)]
 
-use libloading_helper::{library, LibrarySymbol};
-
-macro_rules! assert_gen {
-    ($( $path: path )?) => {
-        $( use $path::*; )?
-
-        assert_eq!(ffi_void::NAME, "ffi_void");
-        assert_eq!(ffi_args::NAME, "ffi_args");
-        assert_eq!(ffi_ret::NAME, "ffi_ret");
-        assert_eq!(ffi_all::NAME, "ffi_all");
-        assert_eq!(A::NAME, "A");
-
-        assert_eq!(ffi_void::SYMBOL, b"ffi_void\0");
-        assert_eq!(ffi_args::SYMBOL, b"ffi_args\0");
-        assert_eq!(ffi_ret::SYMBOL, b"ffi_ret\0");
-        assert_eq!(ffi_all::SYMBOL, b"ffi_all\0");
-        assert_eq!(A::SYMBOL, b"A\0");
-
-        assert_eq!(std::any::type_name::<<ffi_void as LibrarySymbol>::Type>(), "unsafe extern \"C\" fn()");
-        assert_eq!(std::any::type_name::<<ffi_args as LibrarySymbol>::Type>(), "unsafe extern \"C\" fn(i32, u64, ...)");
-        assert_eq!(std::any::type_name::<<ffi_ret as LibrarySymbol>::Type>(), "unsafe extern \"C\" fn() -> i32");
-        assert_eq!(std::any::type_name::<<ffi_all as LibrarySymbol>::Type>(), "unsafe extern \"C\" fn(i32, u64, ...) -> i32");
-        assert_eq!(std::any::type_name::<<A as LibrarySymbol>::Type>(), "*mut i32");
-    };
-}
-
-#[test]
-fn library_parse_mod() {
-    #[library]
-    mod ffi {
-        extern "C" {
-            pub fn ffi_void();
-
-            pub fn ffi_args(a: i32, b: u64, ...);
-
-            pub fn ffi_ret() -> i32;
-
-            pub fn ffi_all(a: i32, b: u64, ...) -> i32;
-
-            pub static A: i32;
-        }
-    }
-
-    assert_gen!(ffi);
-}
-
-#[test]
-fn library_parse_extern_c_block() {
-    #[library]
-    extern "C" {
-        pub fn ffi_void();
-
-        pub fn ffi_args(a: i32, b: u64, ...);
-
-        pub fn ffi_ret() -> i32;
-
-        pub fn ffi_all(a: i32, b: u64, ...) -> i32;
-
-        pub static A: i32;
-    }
-
-    assert_gen!();
-}
+use libloading_helper::library;
 
 #[test]
 #[ignore = "仅当`test.c`编译为动态库后手动调用"]
-fn library_call() -> Result<(), libloading_helper::Error> {
-    #[library]
+fn library_mod() -> Result<(), libloading_helper::Error> {
+    /// test
+    #[library(TestCall)]
+    #[allow(non_snake_case)]
     mod test_call {
         extern "C" {
-            pub fn add(a: i32, b: i32) -> i32;
+            /// add num
+            fn add(a: i32, b: i32) -> i32;
 
-            pub static STATIC_A: i32;
+            /// STATIC
+            static STATIC_A: i32;
         }
     }
-
-    use test_call::{add, STATIC_A};
 
     unsafe {
         let lib =
             libloading_helper::Library::new(libloading_helper::library_filename("test_call"))?;
 
-        let a = STATIC_A::get(&lib)?;
-        assert_eq!(100i32, a.read());
+        let t = test_call::TestCall::load(&lib)?;
 
-        assert_eq!(100, libloading_helper::call!(lib.add(1, 99))?);
+        assert_eq!(100i32, t.STATIC_A.read());
+
+        assert_eq!(100, t.add(1, 99));
+    }
+
+    Ok(())
+}
+
+#[test]
+#[ignore = "仅当`test.c`编译为动态库后手动调用"]
+#[allow(non_snake_case)]
+fn library_extern_block() -> Result<(), libloading_helper::Error> {
+    /// test
+    #[library(TestCall)]
+    extern "C" {
+        /// add num
+        fn add(a: i32, b: i32) -> i32;
+
+        /// STATIC
+        static STATIC_A: i32;
+    }
+
+    unsafe {
+        let lib =
+            libloading_helper::Library::new(libloading_helper::library_filename("test_call"))?;
+
+        let t = TestCall::load(&lib)?;
+
+        assert_eq!(100i32, t.STATIC_A.read());
+
+        assert_eq!(100, t.add(1, 99));
     }
 
     Ok(())

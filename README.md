@@ -1,30 +1,34 @@
 # libloading_helper
 
-将`extern "C"`块(或mod中的`extern "C"`块)中的方法、静态变量替换为同名结构并自动派生[`LibrarySymbol`]
+将`extern "C"`块(或mod中的`extern "C"`块)中的方法、静态变量生成到指定结构体中
 
 # Example
 
-```rust
-use libloading_helper::{library, LibrarySymbol};
+```compile_fail
+use libloading_helper::{library, Library, Symbol, Error};
 
-#[library]
+#[library(Ffi)]
 mod ffi {
     extern "C" {
-        pub fn ffi_all(a: i32, b: u64, ...) -> i32;
+        pub fn ffi_all(a: i32, b: u64) -> i32;
+        pub static A: i32;
     }
 }
 
-#[library]
-extern "C" {
-    pub static A: i32;
+// 将在`ffi`中生成以下代码
+
+pub struct Ffi<'lib> {
+    pub A: Symbol<'lib, *mut i32>,
+    ffi_all: Symbol<'lib, extern "C" unsafe fn(i32, u64) -> i32>
 }
 
-assert_eq!(ffi::ffi_all::NAME, "ffi_all");
-assert_eq!(A::NAME, "A");
+impl<'lib> Ffi<'lib> {
+    pub unsafe fn load(library: &'lib Library) -> Result<Self, Error> {
+        ...
+    }
 
-assert_eq!(ffi::ffi_all::SYMBOL, b"ffi_all\0");
-assert_eq!(A::SYMBOL, b"A\0");
-
-assert_eq!(std::any::type_name::<<ffi::ffi_all as LibrarySymbol>::Type>(), "unsafe extern \"C\" fn(i32, u64, ...) -> i32");
-assert_eq!(std::any::type_name::<<A as LibrarySymbol>::Type>(), "*mut i32");
+    pub unsafe fn ffi_all(&self, a: i32, b: u64) -> i32 {
+        ...
+    }
+}
 ```
