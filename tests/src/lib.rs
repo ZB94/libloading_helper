@@ -19,10 +19,7 @@ fn library_mod() -> Result<(), libloading_helper::Error> {
     }
 
     unsafe {
-        let lib =
-            libloading_helper::Library::new(libloading_helper::library_filename("test_call"))?;
-
-        let t = test_call::TestCall::load(&lib)?;
+        let t = test_call::TestCall::load(&libloading_helper::library_filename("test_call"))?;
 
         assert_eq!(100i32, t.STATIC_A.read());
 
@@ -47,10 +44,7 @@ fn library_extern_block() -> Result<(), libloading_helper::Error> {
     }
 
     unsafe {
-        let lib =
-            libloading_helper::Library::new(libloading_helper::library_filename("test_call"))?;
-
-        let t = TestCall::load(&lib)?;
+        let t = TestCall::load(libloading_helper::library_filename("test_call"))?;
 
         assert_eq!(100i32, t.STATIC_A.read());
 

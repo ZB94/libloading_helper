@@ -1,5 +1,6 @@
 use std::ffi::CString;
 
+use heck::ToSnakeCase;
 use proc_macro2::Ident;
 use quote::quote;
 use syn::{
@@ -42,6 +43,8 @@ pub fn parse_extern_c_block(block: &mut ItemForeignMod) -> Vec<ExternCItem> {
 }
 
 pub fn gen(ident: &Ident, items: &[ExternCItem]) -> Vec<Item> {
+    let lib = quote::format_ident!("{}_library", ident.to_string().to_snake_case());
+
     let fields_def = items.iter().map(
         |ExternCItem {
              ident,
@@ -58,13 +61,14 @@ pub fn gen(ident: &Ident, items: &[ExternCItem]) -> Vec<Item> {
 
             quote! {
                 #doc
-                #vis #ident: libloading_helper::Symbol<'lib, #ty>
+                #vis #ident: libloading_helper::RawSymbol<#ty>
             }
         },
     );
 
     let def = parse_quote! {
-        pub struct #ident<'lib> {
+        pub struct #ident {
+            pub #lib: libloading_helper::Library,
             #( #fields_def ),*
         }
     };
@@ -72,7 +76,7 @@ pub fn gen(ident: &Ident, items: &[ExternCItem]) -> Vec<Item> {
     let fields_value = items.iter().map(
         |ExternCItem {
              ident, ty, symbol, ..
-         }| quote!(#ident: library.get::<#ty>(#symbol)?),
+         }| quote!(#ident: #lib.get::<#ty>(#symbol)?.into_raw()),
     );
 
     let fn_impl = items.iter().filter_map(|item| {
@@ -101,10 +105,13 @@ pub fn gen(ident: &Ident, items: &[ExternCItem]) -> Vec<Item> {
     });
 
     let impl_ = parse_quote! {
-        impl<'lib> #ident<'lib> {
-            pub unsafe fn load(library: &'lib libloading_helper::Library) -> std::result::Result<Self, libloading_helper::Error> {
+        impl #ident {
+            pub unsafe fn load<S: std::convert::AsRef<std::ffi::OsStr>>(library_path: S) -> std::result::Result<Self, libloading_helper::Error> {
+                let #lib = libloading_helper::Library::new(library_path)?;
+
                 std::result::Result::Ok(Self {
-                    #( #fields_value ),*
+                    #( #fields_value,)*
+                    #lib
                 })
             }
 
