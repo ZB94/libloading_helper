@@ -5,7 +5,7 @@
 # Example
 
 ```compile_fail
-use libloading_helper::{library, Library, Symbol, Error};
+use libloading_helper::{library, Library, RawSymbol, Error};
 
 #[library(Ffi)]
 mod ffi {
@@ -17,13 +17,13 @@ mod ffi {
 
 // 将在`ffi`中生成以下代码
 
-pub struct Ffi<'lib> {
-    pub A: Symbol<'lib, *mut i32>,
-    ffi_all: Symbol<'lib, extern "C" unsafe fn(i32, u64) -> i32>
+pub struct Ffi {
+    pub A: RawSymbol<*mut i32>,
+    ffi_all: RawSymbol<extern "C" unsafe fn(i32, u64) -> i32>
 }
 
-impl<'lib> Ffi<'lib> {
-    pub unsafe fn load(library: &'lib Library) -> Result<Self, Error> {
+impl Ffi {
+    pub unsafe fn load<S: AsRef<std::ffi::OsStr>>(library_path: S) -> Result<Self, Error> {
         ...
     }
 
