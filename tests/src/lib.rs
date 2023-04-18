@@ -1,12 +1,15 @@
-#![cfg(test)]
+#[no_mangle]
+pub extern "C" fn add(a: i32, b: i32) -> i32 {
+    a + b
+}
 
-use libloading_helper::library;
+#[no_mangle]
+pub static mut STATIC_A: i32 = 100;
 
 #[test]
-#[ignore = "仅当`test.c`编译为动态库后手动调用"]
 fn library_mod() -> Result<(), libloading_helper::Error> {
     /// test
-    #[library(TestCall)]
+    #[libloading_helper::library(TestCall)]
     #[allow(non_snake_case)]
     mod test_call {
         extern "C" {
@@ -30,11 +33,10 @@ fn library_mod() -> Result<(), libloading_helper::Error> {
 }
 
 #[test]
-#[ignore = "仅当`test.c`编译为动态库后手动调用"]
 #[allow(non_snake_case)]
 fn library_extern_block() -> Result<(), libloading_helper::Error> {
     /// test
-    #[library(TestCall)]
+    #[libloading_helper::library(TestCall)]
     extern "C" {
         /// add num
         fn add(a: i32, b: i32) -> i32;
